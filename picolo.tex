@@ -1,0 +1,227 @@
+\documentclass[a4paper]{article}
+\usepackage{wp-settings}
+
+\begin{document}
+
+\pagecolor{oldlace}
+
+\title{The Picolo project}
+\author{Adi Kancherla}
+\date{November 26, 2017 \\\hfill \\version 1 (private release) \\\hfill \\Whitepaper for the project can be found at \cite{Picolo_Whitepaper}}
+\maketitle
+\begin{abstract}
+This is a work in progress. Methods and equations presented here will most likely change as the platform evolves. Current thinking towards methods for training AI algorithms that make price predictions for cryptos and take bets from users are discussed. Note that work presented here is not original research but merely an innovative way of using existing work of various authors. Appropriate attributions are made through out the paper and a full list of references can be found at the end. AI algorithms used here work on two distinct types of data: unstructured in the form of text and structured in the form of exchange data and bets on the platform. While the research on sentiment analysis on unstructured data is vast and several off the shelf solutions are available, we explore an approach based on LSTM networks. For structured data, a novel approach is proposed where the state of the platform (all current bets, buzzing topics, randomly timestamped snapshots of past platform state) is reduced to a “game state” and presented as a Markov Decision Process. Incentive decay functions that govern the payouts made to users for contributing on the platform are discussed. 
+\end{abstract}
+
+
+%-----------------------------------------------------------------------------
+%  INTRODUCTION
+%-----------------------------------------------------------------------------
+\section{Introduction}\label{Sect:Introduction}
+Blockchain technology is taking the world by storm and is increasingly capturing people's attention. The total market cap of all the cryptocurrencies and tokens was about \$4 billion at the beginning of 2017 and has grown close to \$300 billion as of November 2017. It is hard to recall such a rate of growth for any industry in history. Much like a startup company that found viral success, the crypto space has much to deal with the unexpected growth in order to take on traditional asset classes and challenge the status quo. While there are excellent infrastructural projects in the works like plasma \cite{Plasma} for solving scaling issues and filecoin \cite{Filecoin} for solving storage issues, there are few projects that take on the problems experienced by the drivers of this boom: investors. In the accompanying whitepaper \cite{Picolo_Whitepaper} we discussed the problem in greater detail and the solution we are building. This paper details some of the initial thoughts on the implementation and underlying math for the features presented in the whitepaper. The incentive payout system is partly inspired by concepts from Mechanism design theory \cite{Mechanism_design} while AI algorithms draw upon research in the fields of reinforcement learning techniques \cite{Reinforcement_learning} and artificial neural networks \cite{Artificial_neural_network}.
+
+%-----------------------------------------------------------------------------
+%  SECTION _ _ _
+%-----------------------------------------------------------------------------
+\section{AI algorithms}
+Some factors that affect prices of cryptos are listed below. These factors are by no means exhaustive but provide a framework within which mechanisms to analyze them can be discussed. See the sub sections where some techniques are presented.
+Factors affecting the prices of crypto assets:
+
+\begin{itemize}
+	\item Is this a base crypto like bitcoin or ethereum? Base cryptos are used to buy other cryptos. This increases demand for it until the seller of the other crypto decides to sell the base crypto.
+	\item Hype cycle. Current news or sentiment for a crypto. New developments like signing a partnership or launching a new product that increases its utility. 
+	\item Profit taking. When an asset gains a lot of value from its previous “base”, profit taking can take place.
+	\item Loss cutting.
+	\item Regulatory concerns. Cryptos are a new development and there is regulatory uncertainty surrounding them. Developments in this regard can hugely affect prices.
+	\item Increased awareness. As more and more people start paying attention to the space, more money flows in which can affect volatility.
+	\item Technological advancement. While blockchain technology has a huge potential to transform various industries, there remain concerns regarding scalability, privacy, security, ease of use etc. Progress in 	addressing these concerns will have a lasting impact on asset prices.
+\end{itemize}
+Following methods can be used to effectively analyze the impact of above factors on crypto prices.
+
+\subsection{Analyzing unstructured data}
+Unstructured data consists of the following types of content:
+\begin{itemize}
+	\item Posts, comments, questions etc.
+	\item Memes, gifs, videos etc.
+	\item Content from third parties in the form of tweets etc.
+\end{itemize}
+While there is considerable amount of research in multimodal sentiment analysis a.k.a extracting sentiments from videos and GIFs, those methods are not explored in the current iteration of this paper. See \cite{Multimodal1} and \cite{Multimodal2} for examples. Here a method to perform sentiment analysis on textual data using an LSTM (Long Short Term Memory) is described. LSTM is a type of a recurrent neural net, that can learn dependencies in an arbitrarily long sequence of events. RNNs (Recurrent neural network - \figref{fig:rnn} \cite{RNNReview}) retain a state that can represent information from an arbitrarily long context window. Further, they can simultaneously model sequential and time dependencies on multiple scales. This success is attributed to their ability to learn hierarchical representations. But RNNs suffer from vanishing and exploding gradients problem (see \cite{GradientProblems}) making them hard to train. To solve this, an LSTM uses a memory cell (\figref{fig:memcell}). A memory cell has a node with a self-referencing edge of fixed weight one, preventing the gradient from exploding or vanishing across time steps. See \figref{fig:lstm} for an RNN with two memory cells.
+\begin{figure}[h!] \centering
+	\includegraphics[width=\fscale{1}]{rnn.png}
+	\caption{A recurrent neural network} \label{fig:rnn}
+\end{figure}
+\begin{figure}[h!] \centering
+	\includegraphics[width=\fscale{1}]{memcell.png}
+	\caption{LSTM memory cell} \label{fig:memcell}
+\end{figure}
+\begin{figure}[h!] \centering
+	\includegraphics[width=\fscale{1}]{lstm.png}
+	\caption{ A recurrent neural network with two memory cells expanded across two time steps} \label{fig:lstm}
+\end{figure}
+
+\subsubsection{Methodology}
+Price predictions from sentiments is done in three distinct steps:
+\begin{itemize}
+	\item Individual sentiment analysis on a unit of data (a single post, comment etc.)
+	\item Combining the vector output from the above step with additional data (e.g price at the time of sentiment inference) and adding it to a sequence
+	\item Analyzing the sequence when it reaches a desired length, by feeding it to an LSTM that outputs predictions
+\end{itemize}
+Length of the sequence can be varied to get predictions for different time scales. For e.g, a shorter sequence can be used to predict prices in the short term where as a longer sequence can be used to
+predict prices in the long term.
+
+\subsubsection{Unit data analysis}
+There exists a large body of research on sentiment analysis of tweets and other social media data. See \cite{TweetAnalysis1} and \cite{TweetAnalysis2} for two of the most cited works. Most of the research including these two works use SVM (Support Vector Machine) classifiers to train and run a model. Pre trained models are readily available for common tasks like inferring sentiment from movie reviews which can be reused with a few modifications. However, we propose using a simple cloud API in this paper. One such API is Google's natural language API. It takes in a piece of text and outputs the sentiment expressed as a score and magnitude. Score represents the overall sentiment and magnitude measures how strong the sentiment is. Score ranges from -1.0 (negative) to 1.0 (positive) where as magnitude ranges from 0.0 to $\infty$. Higher the magnitude, higher the strength of the sentiment. For example, a score of 0.5 and a magnitude of 6.2 indicates a strong mildly positive sentiment. Output from this task is represented as a two dimensional vector of the form [s, m] and is added to a sequence.
+
+\subsubsection{Sequence analysis}
+Once we have a desired length sequence, an LSTM is employed to perform analysis and output predictions. A simplified view of an LSTM cell is shown in \figref{fig:simplememcell} \cite{DeepLearningDotNet}. 
+\begin{figure}[h!] \centering
+	\includegraphics[width=\fscale{1}]{simplememcell.png}
+	\caption{Simplified view of an LSTM memory cell} \label{fig:simplememcell}
+\end{figure} 
+It has the following components:
+\begin{itemize}
+	\item Input node $i$. Takes input vector $x_t$ of the form [s, m] from the current time step and output of the hidden layer $h_{t-1}$ from the previous time step
+	\item Input gate $g$. Similar to input node, takes $x_t$ and $h_{t-1}$. Its value multiplies the value of the input node $i$
+	\item State $s$. State of the memory cell
+	\item Forget gate $f$. Controls how much of a previous state has to be remembered and used in the current calculation
+	\item Output gate $o$. Outputs the final value of computation in the current time step
+\end{itemize}
+These equations fully determine the computation \cite{RNNReview}:
+\begin{gather*}
+g_t=\phi(W^{gx}x_t + W^{gh}h_{t-1} + b_g) \\
+i_t=\sigma(W^{ix}x_t + W^{ih}h_{t-1} + b_i) \\
+f_t=\sigma(W^{fx}x_t + W^{fh}h_{t-1} + b_f) \\
+o_t=\sigma(W^{ox}x_t + W^{oh}h_{t-1} + b_o) \\
+s_t=g_t \odot i_t + s_{t-1} \odot f_t \\
+h_t=\phi(s_t) \odot o_t
+\end{gather*}
+where
+\begin{description}
+	\item[~$W$]s are weight matrices between components
+	\item[~$b$]s are biases
+	\item[~$\phi$] is the tanh function $\frac{e^x - e^{-x}}{e^x + e^{-x}}$
+	\item[~$\sigma$] is the sigmoid function $\frac{1}{1 + e^{-x}}$ and
+	\item[~$\odot$] is point multiplication
+\end{description}
+Activations from the memory cell layer are fed to the output layer of the RNN which produces final predictions. The output layer employs a softmax function that calculates the probabilities of a set number of price ranges. If $a_i$ are the activations, then softmax $S(a_i)$ is given by
+\begin{displaymath}
+S(a_i)=\frac{e^{a_i}}{\sum_{i=1}^i e^{a_i}}
+\end{displaymath}
+
+\subsubsection{Training}
+The LSTM can be trained using various sequence lengths $\alpha$ to predict prices after various time scales $\gamma$ and $\beta$ \cite{TrainingTimeScales} (see \figref{fig:training}). For example, to train the LSTM to predict prices 2 days into the future, we might consider a sequence length of 10000 where the latest sentiment vector in the sequence is generated a day prior to the prediction date . So we have $\alpha=10000, \beta=48$ and $\gamma=24$ (time is measured in hours). A large number of such sequences and corresponding prices are taken from the past and are used for training.
+
+\begin{figure}[h!] \centering
+	\includegraphics[width=\fscale{1}]{training.png}
+	\caption{Training for predictions on different time scales} \label{fig:training}
+\end{figure}
+
+\subsection{Analyzing structured data}
+Structured data consists of:
+\begin{itemize}
+	\item Price feed from exchanges
+	\item Quantified signal from sentiment analysis
+	\item Order book from exchanges
+	\item Current bets
+	\item Snapshots from the past that serve as histories
+\end{itemize}
+An AI agent has access to all this information and its objective is to predict the future state of the system. The agent must be able to learn which of its actions are desirable based on rewards that can take place arbitrarily far in the future \cite{RLSurvey}. Here, reward can simply be the accuracy of its predictions. The agent is trained to maximize the reward. Problems with delayed reinforcement are well modeled as Markov decision processes (MDPs) \cite{MDP}. An MDP is characterized by a set of states, a set of actions, a state transition function and a reward function. A value function is defined by
+\begin{gather*}
+V(s)=\max_a \left(R(s,a) + \gamma\sum\nolimits_{s' \in S}T(s,a,s')V(s') \right), \forall s \in S \\
+\end{gather*}
+where
+\begin{description}
+	\item[~$S$] is the set of states
+	\item[~$A$] is the set of actions
+	\item[~$R$] is the reward function  $R: S \times A \rightarrow \Re $
+	\item[~$T$] is the state transition function $T: S \times A \rightarrow \pi(S) $ where $\pi$ is the probability distribution function over the set of states
+	\item[~$\gamma$] is the discount parameter
+	\item[~$T(s,a,s')$] is the probability of state change from $s$ to $s'$ when action $a$ is taken
+\end{description}
+In the real world, state cannot be completely observed. Even the partially observable state is so large and action space infinite that they cannot be represented efficiently by any data structure. Hence a function approximator is constructed from training data and is used to predict future states and recommend actions. An artificial neural network serves as an excellent approximator due to its general structure and availability of various training algorithms. Thus the architecture of the system consists of three components: First, a state representation $s=f(s)$ that encodes raw input $s$ (snapshots from the past, live observations from exchange data, current bets etc where f is a neural network) into an internal (abstract, hidden) state $S$. Second, a model $M$ with state transition function $T(s,a,s')$, reward function $R$ with rewards $r$ and internal discounts $\gamma$. Third, a value function $V$ that outputs values $v(s)$ representing the future from internal state $s$ onwards. The system is applied by unrolling the model $M$ multiple planning steps to produce internal rewards, discounts and values \figref{fig:predictron} \cite{Predictron}. 
+\begin{figure}[h!] \centering
+	\includegraphics[width=\fscale{1}]{predictron.png}
+	\caption{Model rollouts} \label{fig:predictron}
+\end{figure}
+Here $g$ is the overall output:
+\begin{gather*}
+g_n=r_1 + \gamma_1(r_2 + \gamma_2(...(r_{n-1} + \gamma_{n-1}(r_n + \gamma_nv_n))...))
+\end{gather*}
+Initially all parameters $\theta$ of the system are set to random values or a prior domain knowledge. Then updates are made via stochastic gradient descent by minimizing the loss function,
+\begin{gather*}
+L_n=\frac{1}{2}\left( V_E(g~|~s) - V_M(g_n~|~s) \right)^2
+\end{gather*}
+where
+\begin{description}
+	\item[~$V_E$] is the set of values observed in a real environment and
+	\item[~$V_M$] is the set of values predicted by the model $M$
+\end{description}
+\subsubsection{Monte-Carlo Tree Search}
+Since the state space is large, updates above cannot be efficiently implemented in the same way as in perfect information games. In cases like these, Monte-Carlo simulation provides an effective mechanism both for tree search and for state updates, breaking the curse of history and allowing much greater scalability \cite{POMCP}. An extended UCT \cite{UCT} algorithm provides a computationally efficient best-first search that focuses its samples in the most promising regions of the search space. If prior domain knowledge is available, the algorithm narrowly focuses the search on promising states without altering asymptotic convergence. The algorithm uses a simulator $G$ as a generative model of the POMDP. The simulator provides a sample of a successor state, observation and reward, given a state and action,
+\begin{gather*}
+G(s_t, a_t)=(s_{t+1}, o_{t+1}, r_{t+1})
+\end{gather*}
+and is used to generate sequences of states, observations and rewards. These simulations are then used to update the value function $V$. The extended UCT algorithm in \cite{POMCP} uses a search tree of histories instead of states (\figref{fig:pomcp}). A history is a sequence of actions and observations, $h_t = {\{a_1, o_1, ..., a_t, o_t\}}$ available to the AI agent. The agent’s action-selection behavior can be described by a policy, $\pi(h, a)$, that maps a history $h$ to a probability distribution over actions, $\pi(h, a)=P(a_{t+1}=a~|~h_t=h)$. The history tree contains a node $ T(h) = \langle N(h), V (h) \rangle $ for each represented history $h$. $N(h)$ counts the number of times that history $h$ has been visited. $V(h)$ is the value of history $h$, estimated by the mean return of all simulations starting with $h$. New nodes are initialized to $\langle V_{init}(h), N_{init}(h) \rangle $ if domain knowledge is available, and to $ \langle 0, 0 \rangle$ otherwise. During the simulation actions are selected to maximize
+\begin{gather*}
+V'(ha) = V(ha) + c\sqrt{\frac{\log N(h)}{N(ha)}}
+\end{gather*}
+Here $c$ is a constant that determines the trade off between exploration and exploitation. $c=0$ corresponds to greedy exploitation. We approximate the future state for history $h_t$ from $K$ sample states, $ s_i  \in S_t, 1 \leq i \leq K $ by,
+\begin{gather*}
+F(s, h_t) = \frac{1}{K} \sum_{i=1}^{K} \delta_{ss_i} 
+\end{gather*}
+where $\delta_{ss_i}$ is the kronecker delta function. At the start of the algorithm, $K$ samples are taken from an initial state distribution $I_s$(could be random). After a real action $a_t$ is executed, and a real observation $o_t$ is observed, the samples are updated by Monte-Carlo simulation. A state $s$ is sampled from the future state $F(s, h_t)$, by selecting a state at random from $S_t$. This state is then passed into the generator $G$, to give a successor state $s'$ and observation $o'$. If the sample observation matches the real observation, the new state $s'$ is added to $S_{t+1}$. This process repeats until K states have been added to $F$. This approximation to the future state approaches the true future state with sufficient samples.
+\begin{figure}[h!] \centering
+	\includegraphics[width=\fscale{1}]{pomcp.png}
+	\caption{History tree search} \label{fig:pomcp}
+\end{figure}
+%-----------------------------------------------------------------------------
+%  SECTION _ _ _
+%-----------------------------------------------------------------------------
+\section{Incentive decay functions}
+Incentives are based on different categories of contribution. Two example categories are bringing new users to the platform and contributing original content. The incentive amount paid out for a user is dependent on how beneficial the user’s contribution is to the platform relative to other users’ contributions in that category. It is calculated by equation \equref{eq:weighted_incentive}
+
+\begin{equation}
+i=(w/W)*(I_c)\label{eq:weighted_incentive}
+\end{equation}
+where
+\begin{description}
+	\item[~$i$] is the incentive amount paid to the user
+	\item[~$w$] is the user's contribution
+	\item[~$W$] is the sum of all contributions on the platform
+	\item[~$I_c$] is the current incentive constant for category c
+\end{description}
+For example, in user growth category, $W$ could be the total number of new users who joined the platform during time period $t$ and $w$ could be the number of new users brought to the platform by a user in the same time period. Incentive constant for a category can be calculated based on heuristics or a time/value based function. A possible heuristic for the user growth category is that the incentive constant halves for every 50,000 new users and can be calculated by the exponential decay function \equref{eq:exp_decay}
+
+\begin{equation}
+p_{k+1}=(1/2)*p_k\label{eq:exp_decay}
+\end{equation}
+or reformulated as a log linear function \equref{eq:log_exp_decay}
+\begin{equation}
+\log (p_{k+1})=\log (p_k) - 1\label{eq:log_exp_decay}
+\end{equation}
+where
+\begin{description}
+	\item[~$p_{k+1}$] is the incentive amount at time $k+1$
+	\item[~$p_k$] is the incentive amount at time $k$
+	\item and the number of users at time $k+1$ is 50,000 more than the users at time $k$
+\end{description}
+See \figref{fig:inc_dec} for a visualization of how the incentives decrease over time.
+\begin{figure}[h!] \centering
+\includegraphics[width=\fscale{1}]{inceDec.png}
+\caption{Incentive decay} \label{fig:inc_dec}
+\end{figure}
+
+%-----------------------------------------------------------------------------
+%  CONCLUSIONS
+%-----------------------------------------------------------------------------
+\section{Conclusion}
+Initial implementations of AI algorithms that analyze structured and unstructured data are discussed. Unstructured data is analyzed in two steps: first, at a unit level and second as a sequence by feeding it to an LSTM. Structured data consisting of live feed from exchanges, current and past bets on the platform amongst others is represented as a game state where an independent decision making agent learns to take actions that maximize its game score. A method of determining payouts to platform users is discussed where they are determined by the magnitude as well as the category of contribution.
+
+
+%-----------------------------------------------------------------------------
+%  BIBLIOGRAPHY
+%-----------------------------------------------------------------------------
+%\pagebreak
+\bibliographystyle{unsrt}
+\bibliography{./bib/my_bibliography}
+\end{document}
