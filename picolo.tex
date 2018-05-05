@@ -5,12 +5,19 @@
 
 \pagecolor{oldlace}
 
-\title{The Picolo project}
-\author{Adi Kancherla}
-\date{November 26, 2017 \\\hfill \\version 1 (private release) \\\hfill \\Whitepaper for the project can be found at \cite{Picolo_Whitepaper}}
+\title{Picolo: Fast, Fully decentralized, Globally distributed Open Database Network}
+\author{Adi Kancherla \and Arunesh Mishra}
+\date{May 6, 2018 \\\hfill \\version 1 (private release, still work-in-progress) \\\hfill \\Whitepaper for the project can be found at \cite{Picolo_Whitepaper}}
 \maketitle
 \begin{abstract}
-This is a work in progress. Methods and equations presented here will most likely change as the platform evolves. Current thinking towards methods for training AI algorithms that make price predictions for cryptos and take bets from users are discussed. Note that work presented here is not original research but merely an innovative way of using existing work of various authors. Appropriate attributions are made through out the paper and a full list of references can be found at the end. AI algorithms used here work on two distinct types of data: unstructured in the form of text and structured in the form of exchange data and bets on the platform. While the research on sentiment analysis on unstructured data is vast and several off the shelf solutions are available, we explore an approach based on LSTM networks. For structured data, a novel approach is proposed where the state of the platform (all current bets, buzzing topics, randomly timestamped snapshots of past platform state) is reduced to a “game state” and presented as a Markov Decision Process. Incentive decay functions that govern the payouts made to users for contributing on the platform are discussed. 
+
+    Picolo is a fast, scalable, verifiable, fully-decentralized, globally distributed transaction oriented database for Blockchain-based Applications. Picolo uses a probabilistic replication framework on top of DHTs to achieve a O(1) lookup latency for most queries. Its the first and so-far only system of its kind to distribute data at a global scale will full-decentralization and externally-consistent distributed transactions. Its design is tailored to support Blockchain-based applications.
+
+    \begin{itemize}
+        \item Allows for verifiable transaction logs.
+        \item Token economics that gamify honest participation from nodes over malicious intent.
+    \end{itemize}
+
 \end{abstract}
 
 
@@ -18,12 +25,56 @@ This is a work in progress. Methods and equations presented here will most likel
 %  INTRODUCTION
 %-----------------------------------------------------------------------------
 \section{Introduction}\label{Sect:Introduction}
-Blockchain technology is taking the world by storm and is increasingly capturing people's attention. The total market cap of all the cryptocurrencies and tokens was about \$4 billion at the beginning of 2017 and has grown close to \$300 billion as of November 2017. It is hard to recall such a rate of growth for any industry in history. Much like a startup company that found viral success, the crypto space has much to deal with the unexpected growth in order to take on traditional asset classes and challenge the status quo. While there are excellent infrastructural projects in the works like plasma \cite{Plasma} for solving scaling issues and filecoin \cite{Filecoin} for solving storage issues, there are few projects that take on the problems experienced by the drivers of this boom: investors. In the accompanying whitepaper \cite{Picolo_Whitepaper} we discussed the problem in greater detail and the solution we are building. This paper details some of the initial thoughts on the implementation and underlying math for the features presented in the whitepaper. The incentive payout system is partly inspired by concepts from Mechanism design theory \cite{Mechanism_design} while AI algorithms draw upon research in the fields of reinforcement learning techniques \cite{Reinforcement_learning} and artificial neural networks \cite{Artificial_neural_network}.
+
+
+    \begin{itemize}
+        \item Introduce the database problem on the blockchain.
+        \item Overview of current approaches and limitations (details in the Background and Related work section).
+    \end{itemize}
+%
+%Blockchain technology is taking the world by storm and is increasingly capturing people's attention. The total market
+%cap of all the cryptocurrencies and tokens was about \$4 billion at the beginning of 2017 and has grown close to \$300
+%billion as of November 2017. It is hard to recall such a rate of growth for any industry in history. Much like a startup
+%company that found viral success, the crypto space has much to deal with the unexpected growth in order to take on
+%traditional asset classes and challenge the status quo. While there are excellent infrastructural projects in the works
+%like plasma \cite{Plasma} for solving scaling issues and filecoin \cite{Filecoin} for solving storage issues, there are
+%few projects that take on the problems experienced by the drivers of this boom: investors. In the accompanying
+%whitepaper \cite{Picolo_Whitepaper} we discussed the problem in greater detail and the solution we are building. This
+%paper details some of the initial thoughts on the implementation and underlying math for the features presented in the
+%whitepaper. The incentive payout system is partly inspired by concepts from Mechanism design theory
+%\cite{Mechanism_design} while AI algorithms draw upon research in the fields of reinforcement learning techniques
+%\cite{Reinforcement_learning} and artificial neural networks \cite{Artificial_neural_network}.
+%
+%
 
 %-----------------------------------------------------------------------------
-%  SECTION _ _ _
+%  BACKGROUND SECTION
 %-----------------------------------------------------------------------------
-\section{AI algorithms}
+\section{Background}
+%-----------------------------------------------------------------------------
+%  RELATED WORK SECTION
+%-----------------------------------------------------------------------------
+\section{Related Work}
+\section{Overall Design}
+
+    \begin{itemize}
+        \item Overall Picolo architecture.
+        \item Token economics.
+    \end{itemize}
+\section{Network Subsystem}
+
+    \begin{itemize}
+        \item DHT layer for lookup. Replication and caching for O(1) lookups for popular items.
+        \item Token economics for incentivized participation.
+        \item Building with BFT.
+    \end{itemize}
+\section{Database Subsystem}
+
+\subsection{Cluster}
+\subsection{Versioning}
+\subsection{Replication and Token economics}
+\subsection{Handling Failures}
+
 Some factors that affect prices of cryptos are listed below. These factors are by no means exhaustive but provide a framework within which mechanisms to analyze them can be discussed. See the sub sections where some techniques are presented.
 Factors affecting the prices of crypto assets:
 
@@ -223,5 +274,5 @@ Initial implementations of AI algorithms that analyze structured and unstructure
 %-----------------------------------------------------------------------------
 %\pagebreak
 \bibliographystyle{unsrt}
-\bibliography{./bib/my_bibliography}
+\bibliography{./bib/picolo.bib}
 \end{document}
